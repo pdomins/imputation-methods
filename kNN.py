@@ -30,12 +30,12 @@ def find_max_prediction(predictions: dict[Any, tuple[float, Any]]) -> tuple[Any,
         return None, max_counts
     else:
         return max_key, max_counts
+    
 
-
-def get_predictions(distances: list[tuple[Any, float]], 
-                    train_df: pd.DataFrame, 
-                    attr_to_predict: Any, 
-                    is_weighted: bool) -> tuple[Any, list[Any]]:
+def get_predictions_cat(distances: list[tuple[Any, float]], 
+                        train_df: pd.DataFrame, 
+                        attr_to_predict: Any, 
+                        is_weighted: bool) -> tuple[Any, list[Any]]:
     predictions = defaultdict(float)
     for idx, dist in distances:
         prediction_val = train_df.loc[idx, attr_to_predict]
@@ -46,16 +46,49 @@ def get_predictions(distances: list[tuple[Any, float]],
     return find_max_prediction(predictions)
 
 
+def get_predictions_qual(distances: list[tuple[Any, float]], 
+                         train_df: pd.DataFrame, 
+                         attr_to_predict: Any, 
+                         is_weighted: bool) -> tuple[Any, list[Any]]:
+
+    if is_weighted:
+        weights = [(idx, 1 / (dist ** 2)) for idx, dist in distances]
+        prediction_vals = [train_df.loc[idx, attr_to_predict]*weight for idx, weight in weights]
+        dist_sum = sum(map(lambda w : w[1], weights))
+        pred_avg = sum(prediction_vals) / dist_sum
+        return pred_avg, [pred_avg]
+    
+    prediction_vals = [train_df.loc[idx, attr_to_predict] for idx, _ in distances]
+    pred_avg = sum(prediction_vals) / len(prediction_vals)
+    return pred_avg, [pred_avg]
+
+
+def get_predictions(distances: list[tuple[Any, float]], 
+                    train_df: pd.DataFrame, 
+                    attr_to_predict: Any, 
+                    attr_type: str,
+                    is_weighted: bool) -> tuple[Any, list[Any]]:
+    
+    if attr_type == "qualitative":
+        return get_predictions_qual(distances, train_df, attr_to_predict, is_weighted)
+    
+    if attr_type == "categorical":
+        return get_predictions_cat(distances, train_df, attr_to_predict, is_weighted)
+    
+    raise ValueError(f"attr type for {attr_to_predict} must have either categorical or qualitative attr type")
+    
+
 def get_prediction_for_test_row(train_df: pd.DataFrame, 
                                 test_row: pd.Series, 
                                 attr_to_predict: Any,
+                                attr_type: str,
                                 k: int, is_weighted: bool) -> Any:
     distances = calculate_distances(train_df, test_row, attr_to_predict, k)
-    prediction, max_vals = get_predictions(distances, train_df, attr_to_predict, is_weighted)
+    prediction, max_vals = get_predictions(distances, train_df, attr_to_predict, attr_type, is_weighted)
     new_k = k + 1
     while prediction is None and new_k <= train_df.shape[0]:
         distances = calculate_distances(train_df, test_row, attr_to_predict, new_k)
-        prediction, max_vals = get_predictions(distances, train_df, attr_to_predict, is_weighted)
+        prediction, max_vals = get_predictions(distances, train_df, attr_to_predict, attr_type, is_weighted)
         new_k += 1
     if new_k > train_df.shape[0] and prediction is None:
         prediction = random.choice(max_vals)
@@ -63,12 +96,13 @@ def get_prediction_for_test_row(train_df: pd.DataFrame,
 
 
 def kNN(train_df: pd.DataFrame, test_df: pd.DataFrame, 
-        missing_vals: dict, k: int, is_weighted: bool = False) -> pd.DataFrame:
+        missing_vals: dict, attr_types: dict[Any, str],
+        k: int, is_weighted: bool = False) -> pd.DataFrame:
     if k > len(train_df):
         raise ValueError(f"k should be smaller than the total amount of points {len(train_df)}")
 
     test_df_copy = test_df.copy()
-    predictions = [get_prediction_for_test_row(train_df, test_row, missing_vals[test_row_idx], k, is_weighted)
+    predictions = [get_prediction_for_test_row(train_df, test_row, missing_vals[test_row_idx], attr_types[missing_vals[test_row_idx]], k, is_weighted)
                    for test_row_idx, test_row in test_df_copy.iterrows()]
 
     test_df_copy['predictions'] = predictions
