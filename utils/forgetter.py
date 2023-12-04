@@ -1,4 +1,4 @@
-from proba_utils import cum_sum_intervals_from_weights, sample_cols, create_nan_vals
+from utils.proba_utils import cum_sum_intervals_from_weights, sample_cols, create_nan_vals
 from typing import Any
 import pandas as pd
 import numpy as np
