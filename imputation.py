@@ -23,7 +23,7 @@ def imputed_sqr_err(cols: list[str], df: pd.DataFrame) -> dict:
         sqr_err_list = imputed_map_dict[key]
         sqr_err_len = len(sqr_err_list)
         sqr_err_sum = sum(sqr_err_list)
-        mean_sqr_err = sqr_err_sum / sqr_err_len
+        mean_sqr_err = sqr_err_sum / sqr_err_len if sqr_err_len != 0 else 0
         imputed_map[key] = mean_sqr_err
 
     return imputed_map
@@ -70,9 +70,11 @@ def run_comparing(labeled_df: pd.DataFrame,
             running_estimator_config[var_param] = curr_var_val
 
         imputer = imputer_type_map[imputer_type](running_config, running_estimator_config)
-        imputed_mat = imputer.fit_transform(random_missing_df)
+        train_df = random_missing_df.loc[random_missing_df.index.difference(missing_vals_idxs)]
+        imputer = imputer.fit(train_df)
 
         imputer_map[curr_var_val] = imputer
+        imputed_mat = imputer.transform(random_missing_df)
 
         imputed_df = pd.DataFrame(imputed_mat, columns=labeled_df.columns, index=labeled_df.index)
         imputed_df = imputed_df.loc[missing_vals_idxs]
