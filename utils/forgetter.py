@@ -1,10 +1,12 @@
-from utils.proba_utils import cum_sum_intervals_from_weights, sample_cols, create_nan_vals
 from typing import Any
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+
+from utils.proba_utils import cum_sum_intervals_from_weights, sample_cols, create_nan_vals
 
 
-def forget_random_col_per_sample(remove_vals_df: pd.DataFrame, 
+def forget_random_col_per_sample(remove_vals_df: pd.DataFrame,
                                  weight_map: dict[Any, int],
                                  random_generator: np.random.Generator
                                  ) -> tuple[pd.DataFrame, dict, list]:

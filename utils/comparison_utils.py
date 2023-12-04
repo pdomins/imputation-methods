@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
+
 def compare_imputations(df_real, df_imputed):
     comparison_results = []
     for column in df_real.columns:

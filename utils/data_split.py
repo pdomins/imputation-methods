@@ -1,6 +1,7 @@
+import math
+
 import numpy as np
 import pandas as pd
-import math
 
 
 def __shuffled_df_copy__(df: pd.DataFrame, random_state: np.random.Generator) -> pd.DataFrame:
