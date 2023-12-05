@@ -67,7 +67,7 @@ def run_comparing(labeled_df: pd.DataFrame,
     }
 
     imputer_type_map = {
-        "kNN": lambda c, estimator_config: KNNImputer(weights="uniform" **c),
+        "kNN": lambda c, estimator_config: KNNImputer(weights="uniform", **c),
         "WkNN": lambda c, estimator_config: KNNImputer(weights="distance", **c),
         "MICE": lambda c, estimator_config: IterativeImputer(estimator=LinearRegression(**estimator_config), **c),
         "MICE BR": lambda c, estimator_config: IterativeImputer(estimator=BayesianRidge(**estimator_config), **c),
