@@ -1,4 +1,5 @@
 import pandas as pd
+from sklearn.experimental import enable_iterative_imputer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import KNNImputer, IterativeImputer
 from sklearn.linear_model import LinearRegression, BayesianRidge
