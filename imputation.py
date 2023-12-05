@@ -4,6 +4,24 @@ from sklearn.impute import KNNImputer, IterativeImputer
 from sklearn.linear_model import LinearRegression, BayesianRidge
 
 
+def imputed_vals(cols : list[str], df : pd.DataFrame) -> tuple[dict, dict]:
+    real_var_map_dict = dict()
+    imputed_var_map_dict = dict()
+    for col in cols:
+        imputed_var_map_dict[col] = []
+        real_var_map_dict[col] = []
+
+    for _, sample in df.iterrows():
+        imputed_col = sample["imputed"]
+
+        real_val = sample[imputed_col + " (real)"]
+        imputed_val = sample[imputed_col + " (imputed)"]
+
+        imputed_var_map_dict[imputed_col].append(imputed_val)
+        real_var_map_dict[imputed_col].append(real_val)
+
+    return imputed_var_map_dict, real_var_map_dict
+
 def imputed_sqr_err(cols: list[str], df: pd.DataFrame) -> dict:
     imputed_map_dict = dict()
     for col in cols:
