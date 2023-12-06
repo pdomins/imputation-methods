@@ -6,7 +6,21 @@ def get_mapped_indices(missing_vals_idxs : list, new_index : list):
     missing_vals_idxs_dict = dict(map(lambda i,j : (i,j), missing_vals_idxs, new_index))
     return list(map(missing_vals_idxs_dict.get, missing_vals_idxs))
 
-def compare_imputations(df_real : pd.DataFrame, df_imputed : pd.DataFrame, index_column_dict : dict):
+def compare_imputations(df_real, df_imputed):
+    comparison_results = []
+    for column in df_real.columns:
+        mse = mean_squared_error(df_real[column], df_imputed[column])
+        rmse = np.sqrt(mse)
+        mae = mean_absolute_error(df_real[column], df_imputed[column])
+        comparison_results.append({
+            'Column': column,
+            'MSE': mse,
+            'RMSE': rmse,
+            'MAE': mae
+        })
+    return pd.DataFrame(comparison_results)
+
+def compare_imputations2(df_real : pd.DataFrame, df_imputed : pd.DataFrame, index_column_dict : dict):
     df_real = df_real.reset_index(drop=True)
     df_imputed = df_imputed.reset_index(drop=True)
     comparison_results = []
