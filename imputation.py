@@ -157,3 +157,15 @@ def run(
     imputed_df["imputed"] = missing_col_per_pos
 
     return imputed_df, imputer
+
+def scaler(df: pd.DataFrame, cols: list[str]) -> tuple[pd.DataFrame, dict]:
+    col_scaler = dict()
+
+    for col in cols:
+        col_max = df[col].max()
+        col_min = df[col].min()
+        col_range = col_max - col_min
+        col_scaler[col] = (col_max, col_min, col_range)
+        df[col] = (df[col] - col_min) / col_range
+
+    return df, col_scaler
