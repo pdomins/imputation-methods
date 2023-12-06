@@ -59,7 +59,8 @@ def run_comparing(labeled_df: pd.DataFrame,
                   var_name: str,
                   var_range: list,
                   config: dict,
-                  estimator_config: dict = {}) -> tuple[pd.DataFrame, dict]:
+                  estimator_config: dict = {},
+                  disable_scaling: bool = False) -> tuple[pd.DataFrame, dict]:
     mse_df_dict = {
         var_name: [],
         "col": [],
@@ -76,6 +77,12 @@ def run_comparing(labeled_df: pd.DataFrame,
     }
 
     imputer_map = dict()
+
+    if (imputer_type == "kNN" or imputer_type == "WkNN") and not disable_scaling:
+        cols = set(missing_col_per_pos)
+        scaler = get_scaler(labeled_df, cols)
+        labeled_df = apply_scaler(labeled_df, scaler)
+        random_missing_df = apply_scaler(random_missing_df, scaler)
 
     for curr_var_val in var_range:
         running_config = dict()
@@ -99,16 +106,22 @@ def run_comparing(labeled_df: pd.DataFrame,
         imputed_df = pd.DataFrame(imputed_mat, columns=labeled_df.columns, index=labeled_df.index)
         imputed_df = imputed_df.loc[missing_vals_idxs]
 
+        temp_labeled_df = labeled_df
+
+        if (imputer_type == "kNN" or imputer_type == "WkNN") and not disable_scaling:
+            temp_labeled_df = unscale(labeled_df, scaler)
+            imputed_df = unscale(imputed_df, scaler)
+
         for col in labeled_df.columns:
-            imputed_df["{} (real)".format(col)] = labeled_df[col]
+            imputed_df["{} (real)".format(col)] = temp_labeled_df[col]
             imputed_df["{} (imputed)".format(col)] = imputed_df[col]
             imputed_df.drop([col], axis=1, inplace=True)
 
         imputed_df["imputed"] = missing_col_per_pos
 
-        sqr_err_dict = imputed_sqr_err(labeled_df.columns, imputed_df)
+        sqr_err_dict = imputed_sqr_err(temp_labeled_df.columns, imputed_df)
 
-        for col in labeled_df.columns:
+        for col in temp_labeled_df.columns:
             mse_df_dict["col"].append(col)
             mse_df_dict["val"].append(sqr_err_dict[col])
             mse_df_dict[var_name].append(curr_var_val)
@@ -123,7 +136,8 @@ def run(
         missing_col_per_pos: list,
         imputer_type: str,
         config: dict,
-        estimator_config: dict = {}) -> tuple[pd.DataFrame, Any]:
+        estimator_config: dict = {}, 
+        disable_scaling: bool = False) -> tuple[pd.DataFrame, Any]:
     
     imputer_type_map = {
         "kNN": lambda c, estimator_config: KNNImputer(weights="uniform", **c),
@@ -133,6 +147,12 @@ def run(
         "MICE RF": lambda c, estimator_config: IterativeImputer(estimator=RandomForestRegressor(**estimator_config),
                                                                 **c),
     }
+
+    if (imputer_type == "kNN" or imputer_type == "WkNN") and not disable_scaling:
+        cols = set(missing_col_per_pos)
+        scaler = get_scaler(labeled_df, cols)
+        labeled_df = apply_scaler(labeled_df, scaler)
+        random_missing_df = apply_scaler(random_missing_df, scaler)
 
     running_config = dict()
     running_config.update(config)
@@ -149,6 +169,10 @@ def run(
     imputed_df = pd.DataFrame(imputed_mat, columns=labeled_df.columns, index=labeled_df.index)
     imputed_df = imputed_df.loc[missing_vals_idxs]
 
+    if (imputer_type == "kNN" or imputer_type == "WkNN") and not disable_scaling:
+        labeled_df = unscale(labeled_df, scaler)
+        imputed_df = unscale(imputed_df, scaler)
+
     for col in labeled_df.columns:
         imputed_df["{} (real)".format(col)] = labeled_df[col]
         imputed_df["{} (imputed)".format(col)] = imputed_df[col]
@@ -158,7 +182,7 @@ def run(
 
     return imputed_df, imputer
 
-def scaler(df: pd.DataFrame, cols: list[str]) -> tuple[pd.DataFrame, dict]:
+def get_scaler(df: pd.DataFrame, cols: list[str]) -> dict:
     col_scaler = dict()
 
     for col in cols:
@@ -166,6 +190,19 @@ def scaler(df: pd.DataFrame, cols: list[str]) -> tuple[pd.DataFrame, dict]:
         col_min = df[col].min()
         col_range = col_max - col_min
         col_scaler[col] = (col_max, col_min, col_range)
-        df[col] = (df[col] - col_min) / col_range
 
-    return df, col_scaler
+    return col_scaler
+
+def apply_scaler(df: pd.DataFrame, col_scaler: dict) -> pd.DataFrame:
+    df = df.copy()
+    for col in col_scaler.keys():
+        _, col_min, col_range = col_scaler[col]
+        df[col] = (df[col] - col_min) / col_range
+    return df
+
+def unscale(df: pd.DataFrame, col_scaler: dict) -> pd.DataFrame:
+    df = df.copy()
+    for col in col_scaler.keys():
+        _, col_min, col_range = col_scaler[col]
+        df[col] = df[col]*col_range + col_min
+    return df
